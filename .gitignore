@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environment
+venv/
+env/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# Local development settings
+.env
+.env.local
+
+# System files
+.DS_Store
+Thumbs.db
