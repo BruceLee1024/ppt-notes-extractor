@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPT备注提取工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --apple-blue: #007aff;
+            --apple-gray: #f5f5f7;
+            --apple-dark-gray: #86868b;
+            --apple-border-radius: 12px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--apple-gray);
+            color: #1d1d1f;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 800px;
+        }
+        
+        .app-header {
+            text-align: center;
+            padding: 2rem 0;
+        }
+        
+        .app-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .app-subtitle {
+            color: var(--apple-dark-gray);
+            font-weight: 400;
+            font-size: 1.1rem;
+        }
+        
+        .card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: var(--apple-border-radius);
+            border: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .drop-zone {
+            border: 2px dashed #d2d2d7;
+            border-radius: var(--apple-border-radius);
+            padding: 2.5rem;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--apple-blue);
+            background-color: rgba(0, 122, 255, 0.05);
+        }
+        
+        .drop-zone i {
+            font-size: 3rem;
+            color: var(--apple-blue);
+            margin-bottom: 1rem;
+        }
+        
+        .drop-zone h4 {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            color: var(--apple-blue);
+        }
+        
+        #result {
+            display: none;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .result-title {
+            font-weight: 500;
+            margin: 0;
+        }
+        
+        .result-content {
+            padding: 1.5rem;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .btn-apple {
+            background-color: var(--apple-blue);
+            color: white;
+            border-radius: 20px;
+            padding: 0.5rem 1.25rem;
+            font-weight: 500;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-apple:hover {
+            background-color: #0062cc;
+            color: white;
+        }
+        
+        .btn-apple-outline {
+            background-color: transparent;
+            color: var(--apple-blue);
+            border: 1px solid var(--apple-blue);
+            border-radius: 20px;
+            padding: 0.5rem 1.25rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-apple-outline:hover {
+            background-color: rgba(0, 122, 255, 0.1);
+        }
+        
+        .footer {
+            text-align: center;
+            color: var(--apple-dark-gray);
+            font-size: 0.9rem;
+            padding: 1rem 0 2rem;
+        }
+        
+        /* 苹果风格的滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1.5rem;
+            }
+            
+            .drop-zone {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <header class="app-header">
+            <h1 class="app-title">PPT备注提取工具</h1>
+            <p class="app-subtitle">从PowerPoint文件中提取备注并转换为Markdown格式</p>
+        </header>
+        
+        <div class="card">
+            <div class="drop-zone" id="dropZone">
+                <input type="file" id="fileInput" accept=".pptx" class="d-none">
+                <i class="fas fa-file-upload"></i>
+                <h4>拖放PPT文件到这里</h4>
+                <p class="text-muted">或点击选择文件</p>
+                <small class="text-muted">支持.pptx格式</small>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <i class="fas fa-spinner fa-spin mb-3"></i>
+            <p>正在处理中，请稍候...</p>
+        </div>
+
+        <div class="card" id="result">
+            <div class="result-header">
+                <h5 class="result-title">提取结果</h5>
+                <div>
+                    <button class="btn btn-apple-outline me-2" id="downloadBtn">
+                        <i class="fas fa-download me-1"></i>下载
+                    </button>
+                    <button class="btn btn-apple" id="copyBtn">
+                        <i class="fas fa-copy me-1"></i>复制内容
+                    </button>
+                </div>
+            </div>
+            <div class="result-content" id="content"></div>
+        </div>
+        
+        <footer class="footer">
+            <p>© 2023 PPT备注提取工具 | <a href="https://github.com/BruceLee1024/ppt-notes-extractor" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <!-- 引入必要的JavaScript库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    
+    <!-- 引入PPT处理库 -->
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    
+    <script>
+        // 获取DOM元素
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const content = document.getElementById('content');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        // 全局变量存储提取的内容
+        let extractedContent = '';
+        let fileName = '';
+
+        // 处理拖放
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('dragover');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            handleFile(file);
+        }
+
+        // 点击上传
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // 处理文件上传和提取
+        async function handleFile(file) {
+            if (!file) return;
+            
+            if (!file.name.endsWith('.pptx')) {
+                showError('请上传PPTX格式的文件');
+                return;
+            }
+            
+            fileName = file.name.replace('.pptx', '');
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                // 使用JSZip读取PPTX文件
+                const zip = new JSZip();
+                const zipData = await zip.loadAsync(file);
+                
+                // 提取备注
+                const notesData = await extractNotesFromPPTX(zipData);
+                
+                // 显示结果
+                showResult(notesData);
+            } catch (error) {
+                showError('处理文件时出错: ' + error.message);
+            }
+        }
+        
+        // 从PPTX文件中提取备注
+        async function extractNotesFromPPTX(zipData) {
+            // 查找所有幻灯片和备注
+            const slideFiles = [];
+            const notesFiles = [];
+            
+            // 遍历ZIP文件内容
+            zipData.forEach((relativePath, zipEntry) => {
+                // 幻灯片文件路径格式: ppt/slides/slide1.xml
+                if (relativePath.startsWith('ppt/slides/slide') && relativePath.endsWith('.xml') && !relativePath.includes('notesSlide')) {
+                    slideFiles.push({
+                        path: relativePath,
+                        number: parseInt(relativePath.replace('ppt/slides/slide', '').replace('.xml', ''))
+                    });
+                }
+                
+                // 备注文件路径格式: ppt/notesSlides/notesSlide1.xml
+                if (relativePath.startsWith('ppt/notesSlides/notesSlide') && relativePath.endsWith('.xml')) {
+                    notesFiles.push({
+                        path: relativePath,
+                        number: parseInt(relativePath.replace('ppt/notesSlides/notesSlide', '').replace('.xml', ''))
+                    });
+                }
+            });
+            
+            // 按幻灯片编号排序
+            slideFiles.sort((a, b) => a.number - b.number);
+            notesFiles.sort((a, b) => a.number - b.number);
+            
+            // 准备Markdown内容
+            let markdown = `# ${fileName} 备注内容\n\n`;
+            
+            // 处理每个备注文件
+            for (const noteFile of notesFiles) {
+                const slideNumber = noteFile.number;
+                const notesXml = await zipData.file(noteFile.path).async('text');
+                
+                // 从XML中提取文本内容
+                const notesText = extractTextFromNotesXml(notesXml);
+                
+                if (notesText.trim()) {
+                    markdown += `## 第 ${slideNumber} 张幻灯片\n\n${notesText.trim()}\n\n`;
+                }
+            }
+            
+            return markdown;
+        }
+        
+        // 从备注XML中提取文本
+        function extractTextFromNotesXml(xml) {
+            // 简单的XML解析，提取<a:t>标签中的文本
+            const textRegex = /<a:t>([\s\S]*?)<\/a:t>/g;
+            let match;
+            let text = '';
+            
+            while ((match = textRegex.exec(xml)) !== null) {
+                text += match[1] + '\n';
+            }
+            
+            return text;
+        }
+        
+        // 显示结果
+        function showResult(markdown) {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            
+            // 保存提取的内容
+            extractedContent = markdown;
+            
+            // 使用marked库将Markdown转换为HTML
+            content.innerHTML = marked.parse(markdown);
+        }
+        
+        // 显示错误
+        function showError(message) {
+            loading.style.display = 'none';
+            result.style.display = 'block';
+            content.innerHTML = `<div class="alert alert-danger">${message}</div>`;
+        }
+        
+        // 复制内容
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(extractedContent).then(() => {
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>已复制';
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, 2000);
+            });
+        });
+        
+        // 下载Markdown文件
+        downloadBtn.addEventListener('click', () => {
+            const blob = new Blob([extractedContent], {type: 'text/markdown;charset=utf-8'});
+            saveAs(blob, `${fileName}_notes.md`);
+        });
+    </script>
+</body>
+</html>
